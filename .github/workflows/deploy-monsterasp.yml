@@ -1,0 +1,52 @@
+name: Deploy to MonsterASP
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: monsterasp-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore TransportFourthProject.Api/TransportFourthProject.Api.csproj
+
+      - name: Build
+        run: dotnet build TransportFourthProject.Api/TransportFourthProject.Api.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish TransportFourthProject.Api/TransportFourthProject.Api.csproj --configuration Release --no-build --output ./publish
+
+      - name: Install SFTP client
+        run: sudo apt-get update && sudo apt-get install --yes lftp
+
+      - name: Deploy published output over SFTP
+        env:
+          SFTP_HOST: site87783.siteasp.net
+          SFTP_PORT: "22"
+          SFTP_USERNAME: site87783
+          SFTP_PASSWORD: ${{ secrets.MONSTERASP_SFTP_PASSWORD }}
+        run: |
+          lftp \
+            -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
+            -p "$SFTP_PORT" \
+            "sftp://$SFTP_HOST" <<'LFTP_COMMANDS'
+          set sftp:auto-confirm yes
+          mirror --reverse --verbose ./publish/ ./wwwroot/
+          bye
+          LFTP_COMMANDS
