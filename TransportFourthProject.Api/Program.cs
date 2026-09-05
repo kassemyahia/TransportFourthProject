@@ -54,6 +54,16 @@ namespace TransportFourthProject.Api
             {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
             // Add services to the container.
             //builder.Services.AddControllers().AddNewtonsoftJson(options =>
             //{
@@ -127,6 +137,7 @@ namespace TransportFourthProject.Api
             app.UseSwaggerUI();
 
             app.UseHttpsRedirection();
+            app.UseCors("AllowFrontend");
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
