@@ -47,6 +47,6 @@ jobs:
             -p "$SFTP_PORT" \
             "sftp://$SFTP_HOST" <<'LFTP_COMMANDS'
           set sftp:auto-confirm yes
-          mirror --reverse --verbose ./publish/ ./wwwroot/
+          mirror --reverse --verbose --no-perms ./publish/ ./wwwroot/
           bye
           LFTP_COMMANDS
