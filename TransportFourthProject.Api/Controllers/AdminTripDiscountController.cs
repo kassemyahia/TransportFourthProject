@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.DTOs.TripDiscount;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/admin/tripdiscounts")]
     [ApiController]
-    // [Authorize(Roles = "Manager")]
+    [Authorize(Policy = AppPolicies.ManagerOnly)]
     public class AdminTripDiscountController : ControllerBase
     {
         private readonly IAdminTripDiscountRepository _adminTripDiscountRepo;
@@ -59,7 +61,6 @@ namespace TransportFourthProject.Api.Controllers
         }
     }
 }
-
 
 
 

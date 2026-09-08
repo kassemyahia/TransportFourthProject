@@ -1,14 +1,16 @@
 ﻿using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.DTOs.RoutePrice;
 using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/employee/route-price")]
     [ApiController]
-    // [Authorize(Roles = "Manager,OfficeEmployee")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class EmployeeRoutePriceController : ControllerBase
     {
         private readonly IEmployeeRoutePriceRepository _routePriceRepository;
@@ -143,7 +145,6 @@ namespace TransportFourthProject.Api.Controllers
 
     }
 }
-
 
 
 

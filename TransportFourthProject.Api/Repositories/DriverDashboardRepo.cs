@@ -16,12 +16,14 @@ namespace TransportFourthProject.Api.Repositories
         public async Task<List<DriverTripDto>> GetTodayTripsAsync(int driverId)
         {
             var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
 
             var trips = await _context.Trips
                 .Where(t =>
                     t.EmployeeId == driverId &&
                     !t.IsDeleted &&
-                    t.DepartureTime.Date == today)
+                    t.DepartureTime >= today &&
+                    t.DepartureTime < tomorrow)
                 .Select(t => new DriverTripDto
                 {
                     TripId = t.Id,
@@ -33,6 +35,7 @@ namespace TransportFourthProject.Api.Repositories
 
                     BusNumber = t.Bus.BusNumber
                 })
+                .OrderBy(t => t.DepartureTime)
                 .ToListAsync();
 
             return trips;
@@ -40,12 +43,14 @@ namespace TransportFourthProject.Api.Repositories
         public async Task<List<DriverTripDto>> GetTomorrowTripsAsync(int driverId)
         {
             var tomorrow = DateTime.Today.AddDays(1);
+            var dayAfter = tomorrow.AddDays(1);
 
             var trips = await _context.Trips
                 .Where(t =>
                     t.EmployeeId == driverId &&
                     !t.IsDeleted &&
-                    t.DepartureTime.Date == tomorrow)
+                    t.DepartureTime >= tomorrow &&
+                    t.DepartureTime < dayAfter)
                 .Select(t => new DriverTripDto
                 {
                     TripId = t.Id,
@@ -55,6 +60,7 @@ namespace TransportFourthProject.Api.Repositories
                     EndCity = t.RoutePrice.EndCity.Name,
                     BusNumber = t.Bus.BusNumber
                 })
+                .OrderBy(t => t.DepartureTime)
                 .ToListAsync();
 
             return trips;
@@ -63,12 +69,14 @@ namespace TransportFourthProject.Api.Repositories
         public async Task<List<DriverTripDto>> GetAfterTomorrowTripsAsync(int driverId)
         {
             var afterTomorrow = DateTime.Today.AddDays(2);
+            var followingDay = afterTomorrow.AddDays(1);
 
             var trips = await _context.Trips
                 .Where(t =>
                     t.EmployeeId == driverId &&
                     !t.IsDeleted &&
-                    t.DepartureTime.Date == afterTomorrow)
+                    t.DepartureTime >= afterTomorrow &&
+                    t.DepartureTime < followingDay)
                 .Select(t => new DriverTripDto
                 {
                     TripId = t.Id,
@@ -78,6 +86,7 @@ namespace TransportFourthProject.Api.Repositories
                     EndCity = t.RoutePrice.EndCity.Name,
                     BusNumber = t.Bus.BusNumber
                 })
+                .OrderBy(t => t.DepartureTime)
                 .ToListAsync();
             return trips;
         }
@@ -109,7 +118,6 @@ namespace TransportFourthProject.Api.Repositories
 
     }
 }
-
 
 
 

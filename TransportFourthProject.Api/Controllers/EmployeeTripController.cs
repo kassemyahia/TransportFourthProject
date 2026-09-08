@@ -1,15 +1,17 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.Data;
 using TransportFourthProject.Api.DTOs.Trip;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/employee/trips")]
     [ApiController]
-    // [Authorize(Roles = "Manager,OfficeEmployee")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class EmployeeTripController : ControllerBase
     {
         private readonly IEmployeeTripRepository _employeeTripRepo;
@@ -76,7 +78,7 @@ namespace TransportFourthProject.Api.Controllers
                 StartCity = trip.RoutePrice.StartCity.Name,
                 EndCity = trip.RoutePrice.EndCity.Name,
 
-                BusNumber = trip.Bus.Id,
+                BusNumber = trip.Bus.BusNumber,
                 BusType = trip.Bus.BusType.Type,
 
                 AvailableSeats = availableSeats,
@@ -146,7 +148,7 @@ namespace TransportFourthProject.Api.Controllers
             var result = drivers.Select(d => new AvailableDriverForAddTripForEmployeeDto
             {
                 DriverId = d.Id,
-                FullName = d.FirstName + d.LastName
+                FullName = d.FirstName + " " + d.LastName
             });
 
             return Ok(result);
@@ -160,6 +162,7 @@ namespace TransportFourthProject.Api.Controllers
             var result = buses.Select(b => new AvailableBusesForAddTripForEmployeeDto
             {
                 BusId = b.Id,
+                BusNumber = b.BusNumber,
                 BusType = b.BusType.Type,
                 Capacity = b.BusType.Capacity
             });

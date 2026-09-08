@@ -1,10 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.Enums;
 
+using Microsoft.AspNetCore.Authorization;
+using TransportFourthProject.Api.Authorization;
+
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class PaymentMethodController : ControllerBase
     {
         [HttpGet("options")]

@@ -9,10 +9,13 @@ using TransportFourthProject.Api.DTOs.Trip;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
+using Microsoft.EntityFrameworkCore;
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class TripController : ControllerBase
     {
         private readonly ITripRepository _tripRepo;
@@ -44,6 +47,30 @@ namespace TransportFourthProject.Api.Controllers
             });
 
             return Ok(result);
+        }
+
+        [HttpGet("search-options")]
+        public async Task<IActionResult> GetSearchOptions()
+        {
+            var cities = await _context.Cities
+                .AsNoTracking()
+                .OrderBy(city => city.Name)
+                .Select(city => new CityDto { Id = city.Id, Name = city.Name })
+                .ToListAsync();
+
+            var busTypes = await _context.BusTypes
+                .AsNoTracking()
+                .Where(busType => !busType.IsDeleted)
+                .OrderBy(busType => busType.Type)
+                .Select(busType => new BusTypeDto
+                {
+                    BusTypeId = busType.Id,
+                    Name = busType.Type,
+                    Capacity = busType.Capacity
+                })
+                .ToListAsync();
+
+            return Ok(new { Cities = cities, BusTypes = busTypes });
         }
 
         [HttpGet("search")]
@@ -176,25 +203,22 @@ namespace TransportFourthProject.Api.Controllers
             return Ok(seats);
         }
 
-       // [Authorize]
         [HttpPost("select-seat")]
-        public async Task<SelectSeatResponseDto> SelectSeat([FromBody] SelectSeatDto dto)
+        public async Task<IActionResult> SelectSeat([FromBody] SelectSeatDto dto)
         {
             if (!ModelState.IsValid)
-                return new SelectSeatResponseDto
-                {
-                    Message = "TripId and SeatNumber must be positive numbers."
-                };
+                return BadRequest(ModelState);
 
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null)
-                return new SelectSeatResponseDto
-                {
-                    Message = "Invalid token"
-                };
+                return Unauthorized(new { Message = "Invalid token" });
 
-            return await _tripRepo.SelectSeatAsync(dto, int.Parse(userId));
+            var result = await _tripRepo.SelectSeatAsync(dto, int.Parse(userId));
+            if (result.BookingId <= 0)
+                return BadRequest(result);
+
+            return Ok(result);
         }
     }
 }

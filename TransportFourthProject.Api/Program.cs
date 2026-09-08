@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Converters;
+using System.Security.Claims;
 using System.Text;
+using TransportFourthProject.Api.Authorization;
 using TransportFourthProject.Api.Data;
 using TransportFourthProject.Api.Repositories;
 using TransportFourthProject.Api.Services;
@@ -55,11 +58,36 @@ namespace TransportFourthProject.Api
                             IssuerSigningKey =
                                 new SymmetricSecurityKey(
                                     Encoding.UTF8.GetBytes(jwtSettings.Key)
-                                )
+                                ),
+                            NameClaimType = ClaimTypes.Name,
+                            RoleClaimType = ClaimTypes.Role
                         };
                 });
 
-            builder.Services.AddAuthorization();
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy(AppPolicies.UserOnly, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim("AccountType", "User"));
+
+                options.AddPolicy(AppPolicies.StaffOrManager, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim("AccountType", "Employee")
+                    .RequireRole("Manager", "OfficeEmployee")
+                    .AddRequirements(new ActiveEmployeeRequirement()));
+
+                options.AddPolicy(AppPolicies.ManagerOnly, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim("AccountType", "Employee")
+                    .RequireRole("Manager")
+                    .AddRequirements(new ActiveEmployeeRequirement()));
+
+                options.AddPolicy(AppPolicies.DriverOnly, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim("AccountType", "Employee")
+                    .RequireRole("Driver")
+                    .AddRequirements(new ActiveEmployeeRequirement()));
+            });
 
             // =========================================================
             // DATABASE
@@ -230,6 +258,11 @@ namespace TransportFourthProject.Api
             builder.Services.AddScoped<
                 IAdminAllOperationOnEmployeeTableRepo,
                 AdminAllOperationOnEmployeeTableRepo
+            >();
+
+            builder.Services.AddScoped<
+                IAuthorizationHandler,
+                ActiveEmployeeHandler
             >();
 
             // =========================================================

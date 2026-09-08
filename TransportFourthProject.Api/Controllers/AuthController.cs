@@ -13,6 +13,7 @@ using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Repositories;
 using TransportFourthProject.Api.Services;
 using TransportFourthProject.Api.Settings;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
@@ -54,7 +55,8 @@ namespace TransportFourthProject.Api.Controllers
             if (!passwordCheck)
                 return Unauthorized(new { Message = "Login failed" });
 
-            var existingRefresh = await _refreshTokenRepo.GetAsync(r => r.UserId == user.Id && r.ExpiresAt > DateTime.Now);
+            var existingRefresh = await _refreshTokenRepo.GetAsync(r =>
+                r.UserId == user.Id && r.ExpiresAt > DateTime.Now && !r.IsRevoked);
             if(existingRefresh != null)
             {
                 return Ok(new
@@ -122,13 +124,13 @@ namespace TransportFourthProject.Api.Controllers
             if (phoneExists)
                 return BadRequest(new { Message = "Registration failed" });
 
-            var allUser = await _userRepo.GetAllAsync();
-            var nationalExists = allUser.Any(u => _passwordHasher.VerifyPassword(dto.NationalNumber, u.NationalNumber));
+            var encryptedNationalNumber = _aesEncryptionService.Encrypt(dto.NationalNumber);
+            var nationalExists = await _userRepo.ExistsAsync(u =>
+                u.NationalNumber == encryptedNationalNumber);
             if (nationalExists)
                 return BadRequest(new { Message = "Registration failed" });
 
             var hashedPassword = _passwordHasher.HashPassword(dto.Password);
-            var encryptedNationalNumber = _aesEncryptionService.Encrypt(dto.NationalNumber);
             var user = new User
             {
                 FirstName = dto.FirstName,
@@ -198,7 +200,7 @@ namespace TransportFourthProject.Api.Controllers
                 var employee = await _context.Employees
                     .FirstOrDefaultAsync(e => e.Id == storedToken.EmployeeId);
 
-                if (employee == null)
+                if (employee == null || employee.Status != EmployeeStatus.Active)
                     return BadRequest(new { Message = "Refresh failed" });
 
                 person = employee;
@@ -235,7 +237,7 @@ namespace TransportFourthProject.Api.Controllers
                 ExpiresIn = _jwt.DurationInMinutes * 60
             });
         }
-    //    [Authorize]
+        [Authorize(Policy = AppPolicies.UserOnly)]
         [HttpGet("me")]
         public async Task<IActionResult> Me()
         {
@@ -256,7 +258,7 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-       // [Authorize]
+        [Authorize(Policy = AppPolicies.UserOnly)]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
@@ -356,75 +358,22 @@ namespace TransportFourthProject.Api.Controllers
         [HttpPost("employee/login")]
         public async Task<IActionResult> EmployeeLogin([FromBody] EmployeeLoginDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var employee = await _context.Employees
-                .FirstOrDefaultAsync(e => e.Phone == dto.Phone);
-
-            if (employee == null)
-                return Unauthorized(new { Message = "Login failed" });
-
-            var passwordCheck = _passwordHasher.VerifyPassword(dto.Password, employee.Password);
-            if (!passwordCheck)
-                return Unauthorized(new { Message = "Login failed" });
-
-            var existingRefresh = await _refreshTokenRepo.GetAsync(r =>
-                r.EmployeeId == employee.Id &&
-                r.ExpiresAt > DateTime.Now &&
-                !r.IsRevoked);
-
-            if (existingRefresh != null)
-            {
-                return Ok(new
-                {
-                    Message = "You are already logged in",
-                    AccessToken = _tokenService.GenerateUserToken(employee),
-                    RefreshToken = existingRefresh.Token,
-                    Employee = new
-                    {
-                        employee.Id,
-                        employee.FirstName,
-                        employee.LastName,
-                        employee.Phone,
-                        employee.Role,
-                        employee.Status
-                    }
-                });
-            }
-
-            var accessToken = _tokenService.GenerateUserToken(employee);
-            var refreshToken = _tokenService.GenerateRefreshToken();
-
-            var refresh = new RefreshToken
-            {
-                Token = refreshToken,
-                EmployeeId = employee.Id,
-                ExpiresAt = DateTime.Now.AddDays(7),
-                IsRevoked = false
-            };
-
-            await _refreshTokenRepo.AddAsync(refresh);
-            await _refreshTokenRepo.SaveChangesAsync();
-
-            return Ok(new
-            {
-                Message = "Login successful",
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                Employee = new
-                {
-                    employee.Id,
-                    employee.FirstName,
-                    employee.LastName,
-                    employee.Phone,
-                    employee.Role,
-                    employee.Status
-                }
-            });
+            return await LoginEmployee(dto, EmployeeRole.Manager, EmployeeRole.OfficeEmployee);
         }
 
-       // [Authorize]
+        [HttpPost("manager/login")]
+        public async Task<IActionResult> ManagerLogin([FromBody] EmployeeLoginDto dto)
+        {
+            return await LoginEmployee(dto, EmployeeRole.Manager);
+        }
+
+        [HttpPost("staff/login")]
+        public async Task<IActionResult> StaffLogin([FromBody] EmployeeLoginDto dto)
+        {
+            return await LoginEmployee(dto, EmployeeRole.OfficeEmployee);
+        }
+
+        [Authorize(Policy = AppPolicies.StaffOrManager)]
         [HttpGet("employee/me")]
         public async Task<IActionResult> EmployeeMe()
         {
@@ -450,7 +399,7 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-       // [Authorize]
+        [Authorize(Policy = AppPolicies.StaffOrManager)]
         [HttpPost("employee/logout")]
         public async Task<IActionResult> EmployeeLogout()
         {
@@ -485,7 +434,9 @@ namespace TransportFourthProject.Api.Controllers
                 return BadRequest(ModelState);
 
             var driver = await _context.Employees
-                .FirstOrDefaultAsync(e => e.Phone == dto.Phone && e.Role == EmployeeRole.Driver);
+                .FirstOrDefaultAsync(e => e.Phone == dto.Phone &&
+                                          e.Role == EmployeeRole.Driver &&
+                                          e.Status == EmployeeStatus.Active);
 
             if (driver == null)
                 return Unauthorized(new { Message = "Login failed" });
@@ -551,7 +502,7 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-       // [Authorize(Roles = "Driver")]
+        [Authorize(Policy = AppPolicies.DriverOnly)]
         [HttpGet("driver/me")]
         public async Task<IActionResult> DriverMe()
         {
@@ -576,7 +527,7 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-        //[Authorize(Roles = "Driver")]
+        [Authorize(Policy = AppPolicies.DriverOnly)]
         [HttpPost("driver/logout")]
         public async Task<IActionResult> DriverLogout()
         {
@@ -604,11 +555,64 @@ namespace TransportFourthProject.Api.Controllers
             return Ok(new { Message = "Logged out successfully" });
         }
 
+        private async Task<IActionResult> LoginEmployee(
+            EmployeeLoginDto dto,
+            params EmployeeRole[] allowedRoles)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var employee = await _context.Employees.FirstOrDefaultAsync(e =>
+                e.Phone == dto.Phone &&
+                e.Status == EmployeeStatus.Active &&
+                allowedRoles.Contains(e.Role));
+
+            if (employee == null || !_passwordHasher.VerifyPassword(dto.Password, employee.Password))
+                return Unauthorized(new { Message = "Login failed" });
+
+            var existingRefresh = await _refreshTokenRepo.GetAsync(r =>
+                r.EmployeeId == employee.Id &&
+                r.ExpiresAt > DateTime.Now &&
+                !r.IsRevoked);
+
+            if (existingRefresh != null)
+                return EmployeeLoginResponse(employee, existingRefresh.Token, "You are already logged in");
+
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            await _refreshTokenRepo.AddAsync(new RefreshToken
+            {
+                Token = refreshToken,
+                EmployeeId = employee.Id,
+                ExpiresAt = DateTime.Now.AddDays(7),
+                IsRevoked = false
+            });
+            await _refreshTokenRepo.SaveChangesAsync();
+
+            return EmployeeLoginResponse(employee, refreshToken, "Login successful");
+        }
+
+        private IActionResult EmployeeLoginResponse(Employee employee, string refreshToken, string message)
+        {
+            return Ok(new
+            {
+                Message = message,
+                AccessToken = _tokenService.GenerateUserToken(employee),
+                RefreshToken = refreshToken,
+                Employee = new
+                {
+                    employee.Id,
+                    employee.FirstName,
+                    employee.LastName,
+                    employee.Phone,
+                    employee.Role,
+                    employee.Status
+                }
+            });
+        }
+
 
     }
 }
-
-
 
 
 

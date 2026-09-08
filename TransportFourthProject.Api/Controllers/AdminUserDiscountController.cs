@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.DTOs.UserDiscount;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/admin/userdiscounts")]
     [ApiController]
-    // [Authorize(Roles = "Manager")]
+    [Authorize(Policy = AppPolicies.ManagerOnly)]
     public class AdminUserDiscountController : ControllerBase
     {
         private readonly IAdminUserDiscountRepository _adminUserDiscountRepo;

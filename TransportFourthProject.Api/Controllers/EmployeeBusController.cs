@@ -1,16 +1,18 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.MicrosoftExtensions;
+using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using TransportFourthProject.Api.Data;
 using TransportFourthProject.Api.DTOs.Bus;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/employee/buses")]
     [ApiController]
-    // [Authorize(Roles = "Manager,OfficeEmployee")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class EmployeeBusController : ControllerBase
     {
         private readonly IEmployeeBusRepository _employeeBusRepo;

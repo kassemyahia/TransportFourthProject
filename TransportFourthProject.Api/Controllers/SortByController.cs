@@ -1,9 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
+using Microsoft.AspNetCore.Authorization;
+using TransportFourthProject.Api.Authorization;
+
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class SortByController : ControllerBase
     {
         [HttpGet("options")]

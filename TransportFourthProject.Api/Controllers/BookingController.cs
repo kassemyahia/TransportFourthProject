@@ -7,11 +7,14 @@ using TransportFourthProject.Api.DTOs.Pricing;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Services.Pricing;
+using System.Security.Claims;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class BookingController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -22,7 +25,6 @@ namespace TransportFourthProject.Api.Controllers
             _context = context;
             _priceService = priceService;
         }
-      //  [Authorize]
         [HttpPost("cancel-booking/{bookingId}")]
         public async Task<IActionResult> CancelBooking(int bookingId)
         {
@@ -34,9 +36,10 @@ namespace TransportFourthProject.Api.Controllers
                     Message = "Invalid booking Id"
                 });
 
+            var userId = CurrentUserId();
             var booking = await _context.Bookings
                 .Include(b => b.Trip)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .FirstOrDefaultAsync(b => b.Id == bookingId && b.UserId == userId);
 
             if (booking == null)
                 return NotFound(new BookingResponseDto
@@ -100,7 +103,6 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-      //  [Authorize]
         [HttpPost("confirm-cancel-booking/{bookingId}")]
         public async Task<IActionResult> ConfirmCancelBooking(int bookingId)
         {
@@ -112,9 +114,10 @@ namespace TransportFourthProject.Api.Controllers
                     Message = "Invalid booking Id"
                 });
 
+            var userId = CurrentUserId();
             var booking = await _context.Bookings
                 .Include(b => b.Trip)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .FirstOrDefaultAsync(b => b.Id == bookingId && b.UserId == userId);
 
             if (booking == null)
                 return NotFound(new BookingResponseDto
@@ -170,7 +173,6 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
         
-      //  [Authorize]
         [HttpPost("temporary-booking/{bookingId}")]
         public async Task<IActionResult> TemporaryBooking(int bookingId)
         {
@@ -184,9 +186,10 @@ namespace TransportFourthProject.Api.Controllers
                 });
             }
 
+            var userId = CurrentUserId();
             var booking = await _context.Bookings
                 .Include(b => b.Trip)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .FirstOrDefaultAsync(b => b.Id == bookingId && b.UserId == userId);
             if (booking == null)
             {
                 return NotFound(new BookingResponseDto
@@ -207,15 +210,31 @@ namespace TransportFourthProject.Api.Controllers
                 });
             }
 
-            if(booking.Status == BookingStatus.PendingPayment ||
-                  booking.Status == BookingStatus.Confirmed)
+            if (booking.Status != BookingStatus.Created)
             {
                 return BadRequest( new BookingResponseDto
                 {
                     BookingId = booking.Id,
                     SeatNumber = booking.SeatNumber,
                     BookingStatus = booking.Status.ToString(),
-                    Message = "Booking is already temporary or confirmed."
+                    Message = "Only a newly created booking can be temporarily reserved."
+                });
+            }
+
+            var seatIsUnavailable = await _context.Bookings.AnyAsync(other =>
+                other.Id != booking.Id &&
+                other.TripId == booking.TripId &&
+                other.SeatNumber == booking.SeatNumber &&
+                (other.Status == BookingStatus.PendingPayment ||
+                 other.Status == BookingStatus.Confirmed));
+            if (seatIsUnavailable)
+            {
+                return Conflict(new BookingResponseDto
+                {
+                    BookingId = booking.Id,
+                    SeatNumber = booking.SeatNumber,
+                    BookingStatus = booking.Status.ToString(),
+                    Message = "This seat is no longer available."
                 });
             }
 
@@ -234,6 +253,11 @@ namespace TransportFourthProject.Api.Controllers
                 Message = "Temporary booking started. Seat reserved until expiration."
             };
             return Ok(response);
+        }
+
+        private int CurrentUserId()
+        {
+            return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         }
 
     }

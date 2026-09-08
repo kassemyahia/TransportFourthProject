@@ -6,11 +6,13 @@ using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Repositories;
 using TransportFourthProject.Api.Services;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/all-op-on-employee-table")]
+    [Authorize(Policy = AppPolicies.ManagerOnly)]
     public class AdminAllOperationOnEmployeeTableController : ControllerBase
     {
         private readonly IAdminAllOperationOnEmployeeTableRepo _repo;
@@ -25,7 +27,6 @@ namespace TransportFourthProject.Api.Controllers
 
         }
 
-        //[Authorize(Roles = "Manager")]
         [HttpPost("add")]
         public async Task<IActionResult> AddEmployee([FromBody] AddEmployeeDto dto)
         {
@@ -58,7 +59,6 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-        //[Authorize(Roles = "Manager")]
         [HttpPatch("update/{id}")]
         public async Task<IActionResult> UpdateEmployee(int id, [FromBody] UpdateEmployeeDto dto)
         {
@@ -84,7 +84,6 @@ namespace TransportFourthProject.Api.Controllers
             return Ok(new { Message = "Employee updated successfully" });
         }
 
-        //[Authorize(Roles = "Manager")]
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteEmployee(int id, [FromQuery] EmployeeStatus status)
         {
@@ -104,7 +103,6 @@ namespace TransportFourthProject.Api.Controllers
             });
         }
 
-        //[Authorize(Roles = "Manager")]
         [HttpGet("status-list")]
         public IActionResult GetEmployeeStatusList()
         {

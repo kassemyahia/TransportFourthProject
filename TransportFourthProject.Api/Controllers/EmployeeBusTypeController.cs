@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.DTOs.BusType;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/employee/TypeBus")]
     [ApiController]
-    // [Authorize(Roles = "Manager,OfficeEmployee")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class EmployeeBusTypeController : ControllerBase
     {
         private readonly IEmployeeBusTypeRepository _busTypeRepo;

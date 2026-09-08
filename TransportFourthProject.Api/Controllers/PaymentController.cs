@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.DTOs.Payment;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Services.Payments;
+using System.Security.Claims;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class PaymentController : ControllerBase
     {
         private readonly PaymentService _paymentService;
@@ -16,7 +19,6 @@ namespace TransportFourthProject.Api.Controllers
         {
             _paymentService = paymentService;
         }
-      //  [Authorize]
         [HttpPost("payment")]
         public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequestDto request)
         {
@@ -25,7 +27,8 @@ namespace TransportFourthProject.Api.Controllers
 
             var result = await _paymentService.ProcessPaymentAsync(
                 request.BookingId,
-                request.PaymentMethod
+                request.PaymentMethod,
+                int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!)
             );
 
             if (result.PaymentStatus == "NotFound")

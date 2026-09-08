@@ -4,12 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using TransportFourthProject.Api.Data;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/admin/trips")]
     [ApiController]
-    // [Authorize(Roles = "Manager")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class AdminTripController : ControllerBase
     {
         private readonly IAdminTripRepo _adminTripRepo;
@@ -28,6 +29,7 @@ namespace TransportFourthProject.Api.Controllers
         }
 
         [HttpGet("get-all-employees")]
+        [Authorize(Policy = AppPolicies.ManagerOnly)]
         public async Task<IActionResult> GetAllEmployees()
         {
             var employees = await _context.Employees
@@ -49,6 +51,7 @@ namespace TransportFourthProject.Api.Controllers
         }
 
         [HttpGet("drivers")]
+        [Authorize(Policy = AppPolicies.ManagerOnly)]
         public async Task<IActionResult> GetAllDrivers()
         {
             var drivers = await _context.Employees
@@ -70,4 +73,3 @@ namespace TransportFourthProject.Api.Controllers
         }
     }
 }
- 

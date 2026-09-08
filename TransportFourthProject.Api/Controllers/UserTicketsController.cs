@@ -7,10 +7,11 @@ using TransportFourthProject.Api.DTOs.Pricing;
 using TransportFourthProject.Api.DTOs.User;
 using TransportFourthProject.Api.Enums;
 using TransportFourthProject.Api.Services.Pricing;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
-  //  [Authorize]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     [ApiController]
     [Route("api/[controller]")]
     public class UserTicketsController : ControllerBase
@@ -24,7 +25,6 @@ namespace TransportFourthProject.Api.Controllers
             _priceCalculatorService = priceCalculatorService;
         }
 
-      //  [Authorize]
         [HttpGet("my-tickets")]
         public async Task<IActionResult> GetUserTickets()
         {
@@ -81,7 +81,6 @@ namespace TransportFourthProject.Api.Controllers
 
             return Ok(tickets);
         }
-        //[Authorize]
         [HttpGet("my-discount-tickets")]
         public async Task<IActionResult> GetUserActiveDiscountTickets()
         {

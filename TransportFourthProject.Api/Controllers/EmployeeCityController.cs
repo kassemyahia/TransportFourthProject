@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using TransportFourthProject.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using TransportFourthProject.Api.DTOs.City;
 using TransportFourthProject.Api.Repositories;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [Route("api/employee/city")]
     [ApiController]
-    // [Authorize(Roles = "Manager,OfficeEmployee")]
+    [Authorize(Policy = AppPolicies.StaffOrManager)]
     public class EmployeeCityController : ControllerBase
     {
         private readonly IEmployeeCityRepository _cityRepository;

@@ -22,7 +22,8 @@ namespace TransportFourthProject.Api.Services.Payments
 
         public async Task<PaymentResponseDto> ProcessPaymentAsync(
             int bookingId,
-            PaymentMethod method)
+            PaymentMethod method,
+            int userId)
         {
             var booking = await _context.Bookings
                 .Include(b => b.Payment)
@@ -30,7 +31,7 @@ namespace TransportFourthProject.Api.Services.Payments
                 .Include(b => b.Trip).ThenInclude(t => t.TripDiscount)
                 .Include(b => b.User).ThenInclude(u => u.UserDiscountTickets)
                                      .ThenInclude(ud => ud.UserDiscount)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .FirstOrDefaultAsync(b => b.Id == bookingId && b.UserId == userId);
 
             if (booking == null)
                 return new PaymentResponseDto
@@ -38,6 +39,35 @@ namespace TransportFourthProject.Api.Services.Payments
                     PaymentStatus = "NotFound",
                     Message = "Booking not found"
                 };
+
+            if (booking.Status == BookingStatus.Cancelled ||
+                booking.Status == BookingStatus.Expired ||
+                (booking.Status == BookingStatus.PendingPayment &&
+                 booking.ExpirationTime < DateTime.Now))
+            {
+                return new PaymentResponseDto
+                {
+                    BookingId = booking.Id,
+                    PaymentStatus = "Error",
+                    Message = "Booking is cancelled or expired"
+                };
+            }
+
+            var seatIsUnavailable = await _context.Bookings.AnyAsync(other =>
+                other.Id != booking.Id &&
+                other.TripId == booking.TripId &&
+                other.SeatNumber == booking.SeatNumber &&
+                (other.Status == BookingStatus.PendingPayment ||
+                 other.Status == BookingStatus.Confirmed));
+            if (seatIsUnavailable)
+            {
+                return new PaymentResponseDto
+                {
+                    BookingId = booking.Id,
+                    PaymentStatus = "Error",
+                    Message = "This seat is no longer available"
+                };
+            }
 
             string idempotencyKey = Guid.NewGuid().ToString();
 

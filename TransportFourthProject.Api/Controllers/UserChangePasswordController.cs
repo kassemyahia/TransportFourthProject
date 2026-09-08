@@ -5,12 +5,13 @@ using TransportFourthProject.Api.DTOs.User;
 using TransportFourthProject.Api.Models;
 using TransportFourthProject.Api.Repositories;
 using TransportFourthProject.Api.Services;
+using TransportFourthProject.Api.Authorization;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]
+    [Authorize(Policy = AppPolicies.UserOnly)]
     public class UserChangePasswordController : ControllerBase
     {
         private readonly IRepository<User> _userRepo;

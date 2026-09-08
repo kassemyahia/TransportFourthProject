@@ -1,13 +1,17 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using TransportFourthProject.Api.Authorization;
+using TransportFourthProject.Api.DTOs.Employee;
 using TransportFourthProject.Api.Repositories;
 
 namespace TransportFourthProject.Api.Controllers
 {
     [ApiController]
+    [Route("api/driver-dashboard")]
     [Route("api/driver-hashboard")]
-    [Authorize(Roles = "Driver")]
+    [Authorize(Policy = AppPolicies.DriverOnly)]
     public class DriverDashboardController : ControllerBase
     {
         private readonly IDriverDashboardRepo _driverDashboardRepo;
@@ -62,8 +66,8 @@ namespace TransportFourthProject.Api.Controllers
 
         [HttpGet("monthly/{year}/{month}")]
         public async Task<IActionResult> GetMonthlyTripsCount(
-            int year,
-            int month)
+            [Range(1, 9999)] int year,
+            [Range(1, 12)] int month)
         {
             if (!TryGetDriverId(out var driverId))
                 return Unauthorized(new { Message = "Invalid driver token" });
@@ -74,11 +78,17 @@ namespace TransportFourthProject.Api.Controllers
                     year,
                     month);
 
-            return Ok(result);
+            return Ok(new DriverTripsCountDto
+            {
+                Year = year,
+                Month = month,
+                Count = result
+            });
         }
 
         [HttpGet("yearly/{year}")]
-        public async Task<IActionResult> GetYearlyTripsCount(int year)
+        public async Task<IActionResult> GetYearlyTripsCount(
+            [Range(1, 9999)] int year)
         {
             if (!TryGetDriverId(out var driverId))
                 return Unauthorized(new { Message = "Invalid driver token" });
@@ -88,7 +98,11 @@ namespace TransportFourthProject.Api.Controllers
                     driverId,
                     year);
 
-            return Ok(result);
+            return Ok(new DriverYearlyTripsCountDto
+            {
+                Year = year,
+                Count = result
+            });
         }
     }
 }

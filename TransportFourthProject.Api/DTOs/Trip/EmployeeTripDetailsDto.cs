@@ -9,7 +9,7 @@
         public string StartCity { get; set; } = string.Empty;
         public string EndCity { get; set; } = string.Empty;
 
-        public int BusNumber { get; set; }
+        public string BusNumber { get; set; } = string.Empty;
         public string BusType { get; set; } = string.Empty;
 
         public int AvailableSeats { get; set; }
